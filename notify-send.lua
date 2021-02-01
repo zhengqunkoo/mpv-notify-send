@@ -15,14 +15,8 @@ function notify(summary, body, options)
     })
 end
 
-function escape_pango_markup(str)
-    return string.gsub(str, "([\"'<>&])", function (char)
-        return string.format("&#%d;", string.byte(char))
-    end)
-end
-
 function notify_media(title, origin, thumbnail)
-    return notify(escape_pango_markup(title), origin, {
+    return notify(title, origin, {
         -- For some inscrutable reason, GNOME 3.24.2
         -- nondeterministically fails to pick up the notification icon
         -- if either of these two parameters are present.
