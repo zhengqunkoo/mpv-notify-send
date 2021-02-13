@@ -1,4 +1,7 @@
 local utils = require "mp.utils"
+local msg = require 'mp.msg'
+local https = require "ssl.https"
+local lunajson = require "lunajson"
 
 local cover_filenames = { "cover.png", "cover.jpg", "cover.jpeg",
                           "folder.jpg", "folder.png", "folder.jpeg",
@@ -54,9 +57,25 @@ function find_cover(dir)
     return nil
 end
 
+function walk_api(api_path)
+  local body = select(1, https.request(api_path[1]))
+  for i, keys in ipairs(api_path) do
+    if i > 1 then
+      body = lunajson.decode(body)
+      for _, key in ipairs(keys) do
+        body = body[key]
+      end
+      msg.verbose(body)
+      body = select(1, https.request(body))
+    end
+  end
+  return body
+end
+
 function notify_current_media()
     local path = mp.get_property_native("path")
 
+    if path ~= nil then
     local dir, file = utils.split_path(path)
 
     -- TODO: handle embedded covers and videos?
@@ -67,14 +86,21 @@ function notify_current_media()
     local title = file
     local origin = dir
 
+    notify_media(title, origin, thumbnail)
+    end
+end
+
+function notify_metadata_updated(name, data)
+    msg.debug(name, data)
     local metadata = mp.get_property_native("metadata")
     if metadata then
+        for i, v in ipairs(metadata) do msg.debug(i, v) end
         function tag(name)
             return metadata[string.upper(name)] or metadata[name]
         end
 
-        title = tag("title") or title
-        origin = tag("artist_credit") or tag("artist") or ""
+        local title = tag("title") or tag("icy-title") or ""
+        local origin = tag("artist_credit") or tag("artist") or ""
 
         local album = tag("album")
         if album then
@@ -85,9 +111,35 @@ function notify_current_media()
         if year then
             origin = string.format("%s (%s)", origin, year)
         end
-    end
 
-    return notify_media(title, origin, thumbnail)
+        local thumbnail = nil
+        --[[
+        config.json syntax:
+        {
+          "http://path/to/radio/station" :
+          [
+            "http://path/to/first/API/endpoint",
+            ["json params", "to second", "API endpoint" ],
+            ["json params", "to third", "API endpoint" ],
+            ...
+            ["json params", "to ", "art location" ]
+          ]
+        }
+        --]]
+
+        local f = io.open(os.getenv("HOME") .. "/.config/mpv/mpv-notify-send/config.json", "r")
+        local config = lunajson.decode(f:read("*a"))
+        f:close()
+        msg.verbose(mp.get_property_native("path"))
+        if config[mp.get_property_native("path")] ~= nil then
+            thumbnail = "/tmp/mpv-notify-send.thumbnail"
+            f = io.open(thumbnail, "w")
+            f:write(walk_api(config[mp.get_property_native("path")]))
+            f:close()
+        end
+        notify_media(title, origin, thumbnail)
+    end
 end
 
 mp.register_event("file-loaded", notify_current_media)
+mp.observe_property("metadata", "string", notify_metadata_updated)

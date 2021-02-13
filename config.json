@@ -1,0 +1,21 @@
+{
+  "https://playerservices.streamtheworld.com/api/livestream-redirect/Q_DANCEAAC_SC":
+  [
+    "http://feed.q-dance.com/onair",
+    [
+      "TrackData",
+      "NowPlaying",
+      "CoverImage"
+    ]
+  ],
+
+  "https://radio.truckers.fm/":
+  [
+    "https://beta.radiocloud.pro/api/public/v1/song/current",
+    [
+      "data",
+      "album_art"
+    ]
+  ]
+
+}
