@@ -2,6 +2,7 @@ local utils = require "mp.utils"
 local msg = require 'mp.msg'
 local https = require "ssl.https"
 local lunajson = require "lunajson"
+local socket = require "socket"
 
 local cover_filenames = { "cover.png", "cover.jpg", "cover.jpeg",
                           "folder.jpg", "folder.png", "folder.jpeg",
@@ -88,6 +89,8 @@ function notify_current_media()
 
     notify_media(title, origin, thumbnail)
     end
+    socket.sleep(2)
+    mp.observe_property("metadata", "string", notify_metadata_updated)
 end
 
 function notify_metadata_updated(name, data)
@@ -142,4 +145,3 @@ function notify_metadata_updated(name, data)
 end
 
 mp.register_event("file-loaded", notify_current_media)
-mp.observe_property("metadata", "string", notify_metadata_updated)
